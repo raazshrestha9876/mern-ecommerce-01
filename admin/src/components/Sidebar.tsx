@@ -6,6 +6,13 @@ const Sidebar = () => {
     <div className="w-[18%] text-[max(1vw,10px)] min-h-[100vh] border-[1.5px] border-[#a9a9a9] border-t-0">
       <div className="pt-[50px] pl-[20%] flex flex-col gap-[20px]">
         <NavLink
+          to="/dashboard"
+          className="flex active:bg-[#fff0ed] active:border-[tomato] items-center gap-[12px] border-[1px] border-[#a9a9a9] border-r-0 py-[8px] px-[10px] [border-radius:3px_0px_0px_3px] cursor-pointer"
+        >
+          <img className="w-9 h-9 object-contain" src="https://png.pngtree.com/png-vector/20230302/ourmid/pngtree-dashboard-line-icon-vector-png-image_6626604.png" alt="" />
+          <p className="[display:none] sm:block">Home</p>
+        </NavLink>
+        <NavLink
           to="/add"
           className="flex active:bg-[#fff0ed] active:border-[tomato] items-center gap-[12px] border-[1px] border-[#a9a9a9] border-r-0 py-[8px] px-[10px] [border-radius:3px_0px_0px_3px] cursor-pointer"
         >
