@@ -1,8 +1,138 @@
+import foodModel from "../models/FoodModel.js";
 import orderModel from "../models/orderModel.js";
+import userModel from "../models/userModel.js";
 
+export const getAnalyticsForAdmin = async (req, res) => {
+  try {
+    // Get total users
+    const totalUser = await userModel.countDocuments();
+
+    //Get total foods
+    const totalFood = await foodModel.countDocuments();
+
+    // Get total revenue, total order, and total ordered users
+    const results = await orderModel.aggregate([
+      {
+        $match: { status: "Delivered", payment: true },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$amount" }, // Sum once per order
+          userIds: { $addToSet: "$userId" },
+          items: { $push: "$items" },
+        },
+      },
+      {
+        $unwind: "$items",
+      },
+      {
+        $unwind: "$items",
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $first: "$totalRevenue" }, // Preserve from first group
+          totalFoodQuantityOrdered: { $sum: "$items.quantity" },
+          userIds: { $first: "$userIds" },
+          foodIds: { $addToSet: "$items.foodId" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalRevenue: 1,
+          totalFoodQuantityOrdered: 1,
+          totalOrderedUser: { $size: "$userIds" },
+          totalOrdered: { $size: "$foodIds" },
+        },
+      },
+    ]);
+
+    // Get monthly and daily  revenue
+    const revenueByDate = await orderModel.aggregate([
+      { $match: { status: "Delivered", payment: true } },
+      {
+        $facet: {
+          dailyRevenue: [
+            {
+              $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                dailyRevenue: { $sum: "$amount" },
+              },
+            },
+            { $sort: { _id: 1 } },
+            {
+              $project: {
+                _id: 0,
+                date: "$_id",
+                revenue: "$dailyRevenue",
+              },
+            },
+          ],
+          monthlyRevenue: [
+            {
+              $group: {
+                _id: { $dateToString: { format: "%Y-%m", date: "$date" } },
+                monthlyRevenue: { $sum: "$amount" },
+              },
+            },
+            { $sort: { _id: 1 } },
+            {
+              $project: {
+                _id: 0,
+                month: "$_id",
+                revenue: "$monthlyRevenue",
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const { dailyRevenue, monthlyRevenue } = revenueByDate[0];
+
+    const dailyTotalOrdered = await orderModel.aggregate([
+      { $match: { status: "Delivered", payment: true } },
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+          dailyTotalOrdered: { $addToSet: "$items.foodId" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          date: "$_id",
+          dailyTotalOrdered: { $size: "$dailyTotalOrdered" },
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalUser,
+        totalFood,
+        totalRevenue: results[0].totalRevenue,
+        totalFoodQuantityOrdered: results[0].totalFoodQuantityOrdered,
+        totalOrderedUser: results[0].totalOrderedUser,
+        totalOrdered: results[0].totalOrdered,
+        monthlyRevenue: monthlyRevenue,
+        dailyRevenue: dailyRevenue,
+        dailyTotalOrdered: dailyTotalOrdered,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 export const getCategoryAnalytics = async (req, res) => {
-
   try {
     const result = await orderModel.aggregate([
       // Step 1: Filter only delivered and paid orders
@@ -102,7 +232,7 @@ export const getTopFoods = async (req, res) => {
           category: { $first: "$foodDetails.category" },
           totalItemsSold: { $sum: "$items.quantity" },
           totalRevenue: {
-            $sum: { $multiply: ["$items.quantity", "$foodDetails.price"] },  //for this case revenue without delivery charge
+            $sum: { $multiply: ["$items.quantity", "$foodDetails.price"] }, //for this case revenue without delivery charge
           },
         },
       },
