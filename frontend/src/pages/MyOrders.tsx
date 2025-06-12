@@ -53,9 +53,9 @@ const MyOrders = () => {
                 <td className="px-4 py-3 border-b w-[max(14vw,50px)] border-gray-300">
                   {order.items.map((item: any, index: number) => {
                     if (index === order.items.length - 1) {
-                      return item.name + " X " + item.quantity;
+                      return item.foodId?.name + " X " + item.quantity;
                     } else {
-                      return item.name + " X " + item.quantity + ", ";
+                      return item.foodId?.name + " X " + item.quantity + ", ";
                     }
                   })}
                 </td>
